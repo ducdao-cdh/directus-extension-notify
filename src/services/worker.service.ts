@@ -92,7 +92,10 @@ export class WorkerServiceClass extends BaseService {
                 mattermostService.sendMessageToChannel(url, {
                     channel: channel.path,
                     text: mattermost_content,
-                    username: "BOT Notify v2",
+                    priority: {
+                        "priority": "important",
+                        "requested_ack": true
+                    }
                 })
             )
         ).then(async () => {

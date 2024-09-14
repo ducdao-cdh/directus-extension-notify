@@ -16,7 +16,7 @@ export class MatterMostControllerClass extends MattermostNotifyServiceClass {
             middlewareAdminAccess,
             async (req: any, res: any, next: any) => {
 
-                let { template, variables } = req.body
+                let { template, variables, payload } = req.body
 
                 let webhook_mattermost = this.env['MATTERMOST_WEBHOOK_URL']
 
@@ -52,7 +52,11 @@ export class MatterMostControllerClass extends MattermostNotifyServiceClass {
 
                 await Promise.all(templateItem.channels.map(async (channel: any) => {
                     let content = templateParser(templateItem.mattermost_content, variables)
-                    return this.sendMessageToChannel(webhook_mattermost, channel, content)
+                    return this.sendMessageToChannel(webhook_mattermost, {
+                        ...payload,
+                        content,
+                        channel
+                    })
                 }))
 
 

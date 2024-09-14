@@ -1,3 +1,4 @@
+import { InvalidCredentialsError, InvalidPayloadError, ServiceUnavailableError } from '@directus/errors';
 import * as fs$1 from 'fs';
 import fs__default from 'fs';
 import require$$0$1, { URL as URL$2 } from 'url';
@@ -18486,43 +18487,6 @@ function defineEndpoint(config) {
   return config;
 }
 
-// src/create-error.ts
-var createError = (code, message, status = 500) => {
-  return class extends Error {
-    name = "DirectusError";
-    extensions;
-    code = code.toUpperCase();
-    status = status;
-    constructor(extensions, options) {
-      const msg = typeof message === "string" ? message : message(extensions);
-      super(msg, options);
-      this.extensions = extensions;
-    }
-    toString() {
-      return `${this.name} [${this.code}]: ${this.message}`;
-    }
-  };
-};
-
-// src/errors/invalid-credentials.ts
-var InvalidCredentialsError = createError("INVALID_CREDENTIALS" /* InvalidCredentials */, "Invalid user credentials.", 401);
-
-// src/errors/invalid-payload.ts
-var messageConstructor4 = ({ reason }) => `Invalid payload. ${reason}.`;
-var InvalidPayloadError = createError(
-  "INVALID_PAYLOAD" /* InvalidPayload */,
-  messageConstructor4,
-  400
-);
-
-// src/errors/service-unavailable.ts
-var messageConstructor12 = ({ service, reason }) => `Service "${service}" is unavailable. ${reason}.`;
-var ServiceUnavailableError = createError(
-  "SERVICE_UNAVAILABLE" /* ServiceUnavailable */,
-  messageConstructor12,
-  503
-);
-
 var slugify$1 = {exports: {}};
 
 (function (module, exports) {
@@ -34296,7 +34260,10 @@ class WorkerServiceClass extends BaseService {
         async (channel) => mattermostService.sendMessageToChannel(url, {
           channel: channel.path,
           text: mattermost_content,
-          username: "BOT Notify v2"
+          priority: {
+            "priority": "important",
+            "requested_ack": true
+          }
         })
       )
     ).then(async () => {
@@ -34603,7 +34570,7 @@ class MatterMostControllerClass extends MattermostNotifyServiceClass {
       "/mattermost",
       middlewareAdminAccess,
       async (req, res, next) => {
-        let { template, variables } = req.body;
+        let { template, variables, payload } = req.body;
         let webhook_mattermost = this.env["MATTERMOST_WEBHOOK_URL"];
         if (!webhook_mattermost) {
           return next(new ServiceUnavailableError({
@@ -34631,7 +34598,11 @@ class MatterMostControllerClass extends MattermostNotifyServiceClass {
         }
         await Promise.all(templateItem.channels.map(async (channel) => {
           let content = templateParser(templateItem.mattermost_content, variables);
-          return this.sendMessageToChannel(webhook_mattermost, channel, content);
+          return this.sendMessageToChannel(webhook_mattermost, {
+            ...payload,
+            content,
+            channel
+          });
         }));
         return res.status(201).send();
       }
